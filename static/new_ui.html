@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Chat</title>
+
+    <style>
+        :root {
+            font-family: 'Söhne', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            --transition-speed: 0.3s;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2a2a2a;
+            --bg-tertiary: #333333;
+            --bg-user-bubble: #3e3e3e;
+            --bg-assistant-bubble: transparent;
+            --bg-input: #2a2a2a;
+            --bg-header: #1a1a1a;
+            --bg-code: #1e1e1e;
+            --border-color: #3a3a3a;
+            --text-primary: #ececec;
+            --text-secondary: #a0a0a0;
+            --text-muted: #888888;
+            --accent: #d4a574;
+            --accent-hover: #e0b88a;
+            --btn-send-bg: #d4a574;
+            --btn-send-text: #1a1a1a;
+            --scrollbar-thumb: #555;
+            --scrollbar-track: #2a2a2a;
+            --code-header-bg: #2d2d2d;
+            --code-border: #444;
+            --file-chip-bg: #3a3a3a;
+            --file-chip-text: #ccc;
+            --toggle-bg: #555;
+            --toggle-active-bg: #d4a574;
+        }
+
+        [data-theme="light"] {
+            --bg-primary: #ffffff;
+            --bg-secondary: #f7f7f8;
+            --bg-tertiary: #ececec;
+            --bg-user-bubble: #f0f0f0;
+            --bg-assistant-bubble: transparent;
+            --bg-input: #ffffff;
+            --bg-header: #ffffff;
+            --bg-code: #f6f6f6;
+            --border-color: #e0e0e0;
+            --text-primary: #1a1a1a;
+            --text-secondary: #6b6b6b;
+            --text-muted: #999999;
+            --accent: #b3784f;
+            --accent-hover: #9a6440;
+            --btn-send-bg: #b3784f;
+            --btn-send-text: #ffffff;
+            --scrollbar-thumb: #ccc;
+            --scrollbar-track: #f0f0f0;
+            --code-header-bg: #e8e8e8;
+            --code-border: #ddd;
+            --file-chip-bg: #e8e8e8;
+            --file-chip-text: #555;
+            --toggle-bg: #ccc;
+            --toggle-active-bg: #b3784f;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; width: 100%; overflow: hidden; }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background var(--transition-speed), color var(--transition-speed);
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+        ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+
+        .app { display: flex; flex-direction: column; height: 100vh; width: 100%; }
+
+        header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 32px; border-bottom: 1px solid var(--border-color);
+            background: var(--bg-header); flex-shrink: 0;
+            transition: background var(--transition-speed), border-color var(--transition-speed);
+        }
+        .header-left { display: flex; align-items: center; gap: 12px; }
+        .header-left h1 { font-size: 18px; font-weight: 600; letter-spacing: -0.3px; }
+        .model-badge {
+            font-size: 11px; color: var(--text-muted); background: var(--bg-tertiary);
+            padding: 3px 10px; border-radius: 12px;
+            transition: background var(--transition-speed), color var(--transition-speed);
+        }
+
+        .theme-toggle { position: relative; width: 48px; height: 26px; cursor: pointer; flex-shrink: 0; }
+        .theme-toggle input { opacity: 0; width: 0; height: 0; }
+        .toggle-slider {
+            position: absolute; inset: 0; background: var(--toggle-bg);
+            border-radius: 13px; transition: background 0.3s;
+        }
+        .toggle-slider::before {
+            content: ''; position: absolute; top: 3px; left: 3px;
+            width: 20px; height: 20px; background: #fff; border-radius: 50%;
+            transition: transform 0.3s; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .theme-toggle input:checked + .toggle-slider { background: var(--toggle-active-bg); }
+        .theme-toggle input:checked + .toggle-slider::before { transform: translateX(22px); }
+        .toggle-wrapper { display: flex; align-items: center; gap: 8px; }
+        .toggle-icon { font-size: 16px; user-select: none; }
+
+        #messages { flex: 1; overflow-y: auto; padding: 24px 0; }
+        .messages-inner { max-width: 900px; margin: 0 auto; padding: 0 32px; }
+        .message { margin-bottom: 8px; }
+        .message.user { display: flex; justify-content: flex-end; }
+
+        .bubble { max-width: 75%; line-height: 1.65; font-size: 15px; overflow-wrap: anywhere; }
+        .user .bubble {
+            background: var(--bg-user-bubble); padding: 12px 18px;
+            border-radius: 18px 18px 4px 18px; transition: background var(--transition-speed);
+        }
+        .assistant .bubble { background: var(--bg-assistant-bubble); padding: 8px 4px; max-width: 100%; }
+        .error .bubble { background: #5c2020; color: #ffbaba; padding: 12px 18px; border-radius: 18px; }
+        [data-theme="light"] .error .bubble { background: #fde8e8; color: #b91c1c; }
+
+        .empty {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100%; color: var(--text-muted); text-align: center; padding: 40px; gap: 12px;
+        }
+        .empty-icon { font-size: 48px; opacity: 0.4; }
+        .empty-text { font-size: 16px; line-height: 1.6; }
+
+        .attached-files-list { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+        .attached-file-tag {
+            display: inline-flex; align-items: center; gap: 4px; font-size: 12px;
+            background: rgba(255,255,255,0.1); padding: 3px 8px; border-radius: 6px; opacity: 0.85;
+        }
+        [data-theme="light"] .attached-file-tag { background: rgba(0,0,0,0.07); }
+
+        .bubble p { margin: 0 0 10px 0; }
+        .bubble p:last-child { margin-bottom: 0; }
+        .bubble strong { font-weight: 600; }
+        .bubble em { font-style: italic; }
+        .bubble ul, .bubble ol { margin: 8px 0; padding-left: 24px; }
+        .bubble li { margin-bottom: 4px; }
+        .bubble code:not(.code-block-code) {
+            background: var(--bg-code); padding: 2px 6px; border-radius: 4px;
+            font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 13px; border: 1px solid var(--code-border);
+        }
+
+        .code-block-wrapper {
+            margin: 12px 0; border-radius: 8px; overflow: hidden;
+            border: 1px solid var(--code-border); transition: border-color var(--transition-speed);
+        }
+        .code-block-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 8px 14px; background: var(--code-header-bg);
+            font-size: 12px; color: var(--text-secondary);
+            transition: background var(--transition-speed);
+        }
+        .code-block-lang { font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .copy-btn {
+            display: flex; align-items: center; gap: 5px; background: none;
+            border: 1px solid var(--border-color); color: var(--text-secondary);
+            cursor: pointer; font-size: 12px; padding: 4px 10px;
+            border-radius: 6px; min-width: auto; transition: all 0.2s;
+        }
+        .copy-btn:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+        .copy-btn.copied { color: #4ade80; border-color: #4ade80; }
+        .code-block-code {
+            display: block; padding: 14px 16px; background: var(--bg-code);
+            overflow-x: auto; font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+            font-size: 13px; line-height: 1.55; color: var(--text-primary);
+            white-space: pre; transition: background var(--transition-speed);
+        }
+
+        .input-area {
+            padding: 12px 32px 20px; border-top: 1px solid var(--border-color);
+            background: var(--bg-primary); flex-shrink: 0;
+            transition: background var(--transition-speed), border-color var(--transition-speed);
+        }
+        .input-inner { max-width: 900px; margin: 0 auto; }
+        .file-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+        .file-chip {
+            display: flex; align-items: center; gap: 6px; padding: 5px 12px;
+            background: var(--file-chip-bg); color: var(--file-chip-text);
+            border-radius: 8px; font-size: 12px; transition: background var(--transition-speed);
+        }
+        .file-chip-icon { font-size: 14px; }
+        .file-chip-remove { cursor: pointer; opacity: 0.6; font-size: 14px; line-height: 1; }
+        .file-chip-remove:hover { opacity: 1; }
+
+        .input-row {
+            display: flex; align-items: flex-end; gap: 8px;
+            background: var(--bg-input); border: 1px solid var(--border-color);
+            border-radius: 16px; padding: 6px 8px 6px 6px;
+            transition: border-color 0.2s, background var(--transition-speed);
+        }
+        .input-row:focus-within { border-color: var(--accent); }
+
+        .attach-btn {
+            display: flex; align-items: center; justify-content: center;
+            width: 38px; height: 38px; background: none; border: none;
+            color: var(--text-muted); cursor: pointer; border-radius: 10px;
+            flex-shrink: 0; min-width: 38px; font-size: 20px;
+            transition: color 0.2s, background 0.2s;
+        }
+        .attach-btn:hover { color: var(--text-primary); background: var(--bg-tertiary); }
+
+        #messageInput {
+            flex: 1; min-height: 38px; max-height: 180px; padding: 8px 4px;
+            resize: none; border: none; background: transparent;
+            color: var(--text-primary); font: inherit; font-size: 15px;
+            line-height: 1.5; outline: none;
+        }
+        #messageInput::placeholder { color: var(--text-muted); }
+
+        .send-btn {
+            display: flex; align-items: center; justify-content: center;
+            width: 38px; height: 38px; background: var(--btn-send-bg);
+            color: var(--btn-send-text); border: none; border-radius: 10px;
+            cursor: pointer; flex-shrink: 0; min-width: 38px;
+            transition: background 0.2s, opacity 0.2s;
+        }
+        .send-btn:hover { background: var(--accent-hover); }
+        .send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .send-btn svg { width: 18px; height: 18px; }
+
+        .typing-dots { display: inline-flex; gap: 4px; padding: 4px 0; }
+        .typing-dots span {
+            width: 7px; height: 7px; background: var(--text-muted);
+            border-radius: 50%; animation: bounce 1.4s infinite ease-in-out;
+        }
+        .typing-dots span:nth-child(1) { animation-delay: 0s; }
+        .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        #fileInput { display: none; }
+
+        @media (max-width: 600px) {
+            header { padding: 12px 16px; }
+            #messages { padding: 16px 0; }
+            .messages-inner { padding: 0 16px; }
+            .input-area { padding: 10px 16px 16px; }
+            .bubble { max-width: 88%; }
+            .header-left h1 { font-size: 16px; }
+        }
+
+        .log-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: var(--text-secondary);
+            padding: 0 8px;
+        }
+        .log-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #e74c3c;
+            transition: background 0.3s;
+        }
+        .log-dot.ok {
+            background: #2ecc71;
+        }
+        .log-info {
+            font-size: 10px;
+            color: var(--text-secondary);
+            opacity: 0.7;
+        }
+
+    </style>
+</head>
+
+<body>
+    <div class="app" data-theme="dark">
+        <header>
+            <div class="header-left">
+                <h1>Claude</h1>
+                <span class="model-badge" id="modelName">claude-sonnet-4-20250514</span>
+            </div>
+            <div class="toggle-wrapper">
+                <span class="toggle-icon">🌙</span>
+                <label class="theme-toggle">
+                    <input type="checkbox" id="themeSwitch">
+                    <span class="toggle-slider"></span>
+                </label>
+                <span class="toggle-icon">☀️</span>
+            </div>
+
+        <div class="log-status" title="Статус сервера логирования">
+            <div class="log-dot" id="logDot"></div>
+            <span id="logLabel">Логи: офлайн</span>
+        </div>
+            
+        </header>
+
+        <section id="messages">
+            <div class="messages-inner" id="messagesInner">
+                <div class="empty" id="emptyMessage">
+                    <div class="empty-icon">💬</div>
+                    <div class="empty-text">Напишите сообщение, чтобы начать диалог</div>
+                </div>
+            </div>
+        </section>
+
+        <div class="input-area">
+            <div class="input-inner">
+                <div class="file-chips" id="fileChips"></div>
+                <form id="chatForm">
+                    <div class="input-row">
+                        <button type="button" class="attach-btn" id="attachBtn" title="Прикрепить файл">📎</button>
+                        <input type="file" id="fileInput" multiple>
+                        <textarea id="messageInput" placeholder="Напишите сообщение..." rows="1" autofocus></textarea>
+                        <button class="send-btn" id="sendButton" type="submit" title="Отправить">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+        <script>
+
+        // ===== МОДУЛЬ ЛОГИРОВАНИЯ =====
+        const LOG_SERVER = 'http://localhost:3001';
+        let logOnline = false;
+
+        async function checkLogServer() {
+            try {
+                const r = await fetch(LOG_SERVER + '/health', { signal: AbortSignal.timeout(2000) });
+                logOnline = r.ok;
+            } catch(e) {
+                logOnline = false;
+            }
+            const dot = document.getElementById('logDot');
+            const label = document.getElementById('logLabel');
+            if (dot) dot.className = logOnline ? 'log-dot ok' : 'log-dot';
+            if (label) label.textContent = logOnline ? 'Логи: онлайн' : 'Логи: офлайн';
+        }
+
+        async function sendLog(payload) {
+            if (!logOnline) return;
+            try {
+                await fetch(LOG_SERVER + '/log', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } catch(e) {}
+        }
+
+        checkLogServer();
+        setInterval(checkLogServer, 30000);
+        // ===== КОНЕЦ МОДУЛЯ ЛОГИРОВАНИЯ =====
+
+        const app = document.querySelector('.app');
+        const form = document.getElementById('chatForm');
+        const input = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const messagesEl = document.getElementById('messages');
+        const messagesInner = document.getElementById('messagesInner');
+        const emptyMessage = document.getElementById('emptyMessage');
+        const modelNameEl = document.getElementById('modelName');
+        const themeSwitch = document.getElementById('themeSwitch');
+        const attachBtn = document.getElementById('attachBtn');
+        const fileInput = document.getElementById('fileInput');
+        const fileChipsEl = document.getElementById('fileChips');
+
+        const MAX_CONTEXT_MESSAGES = 10;
+        const allMessages = [];
+        const attachedFiles = [];
+
+        function initTheme() {
+            const saved = localStorage.getItem('theme') || 'dark';
+            setTheme(saved);
+            themeSwitch.checked = saved === 'light';
+        }
+        function setTheme(theme) {
+            app.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+        }
+        themeSwitch.addEventListener('change', function() {
+            setTheme(themeSwitch.checked ? 'light' : 'dark');
+        });
+        initTheme();
+
+        input.addEventListener('input', function() {
+            input.style.height = 'auto';
+            input.style.height = Math.min(input.scrollHeight, 180) + 'px';
+        });
+
+        attachBtn.addEventListener('click', function() { fileInput.click(); });
+
+        fileInput.addEventListener('change', function() {
+            Array.from(fileInput.files).forEach(function(file) {
+                if (!attachedFiles.find(function(f) { return f.name === file.name && f.size === file.size; })) {
+                    attachedFiles.push(file);
+                }
+            });
+            fileInput.value = '';
+            renderFileChips();
+        });
+
+        function renderFileChips() {
+            fileChipsEl.innerHTML = '';
+            attachedFiles.forEach(function(file, idx) {
+                var chip = document.createElement('div');
+                chip.className = 'file-chip';
+                chip.innerHTML =
+                    '<span class="file-chip-icon">📄</span>' +
+                    '<span>' + escapeHtml(file.name) + '</span>' +
+                    '<span class="file-chip-remove" data-idx="' + idx + '">&times;</span>';
+                fileChipsEl.appendChild(chip);
+            });
+            fileChipsEl.querySelectorAll('.file-chip-remove').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    attachedFiles.splice(parseInt(btn.dataset.idx), 1);
+                    renderFileChips();
+                });
+            });
+        }
+
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function renderMarkdown(text) {
+            var codeBlocks = [];
+            var BACKTICK3 = String.fromCharCode(96, 96, 96);
+            var BACKTICK1 = String.fromCharCode(96);
+
+            // Извлекаем блоки кода
+            var codeBlockRegex = new RegExp(BACKTICK3 + '(\\w*)\\n?([\\s\\S]*?)' + BACKTICK3, 'g');
+            var processed = text.replace(codeBlockRegex, function(match, lang, code) {
+                var idx = codeBlocks.length;
+                codeBlocks.push({ lang: lang || 'text', code: code.replace(/\n$/, '') });
+                return '%%CODEBLOCK_' + idx + '%%';
+            });
+
+            // Inline code
+            var inlineCodeRegex = new RegExp(BACKTICK1 + '([^' + BACKTICK1 + ']+)' + BACKTICK1, 'g');
+            processed = processed.replace(inlineCodeRegex, '<code>$1</code>');
+
+            // Bold
+            processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+            // Italic
+            processed = processed.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+            var lines = processed.split('\n');
+            var html = '';
+            var inList = false;
+            var listType = '';
+
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i];
+
+                if (/^[\-\*]\s+/.test(line)) {
+                    if (!inList || listType !== 'ul') {
+                        if (inList) html += '</' + listType + '>';
+                        html += '<ul>';
+                        inList = true;
+                        listType = 'ul';
+                    }
+                    html += '<li>' + line.replace(/^[\-\*]\s+/, '') + '</li>';
+                    continue;
+                }
+
+                if (/^\d+\.\s+/.test(line)) {
+                    if (!inList || listType !== 'ol') {
+                        if (inList) html += '</' + listType + '>';
+                        html += '<ol>';
+                        inList = true;
+                        listType = 'ol';
+                    }
+                    html += '<li>' + line.replace(/^\d+\.\s+/, '') + '</li>';
+                    continue;
+                }
+
+                if (inList) {
+                    html += '</' + listType + '>';
+                    inList = false;
+                    listType = '';
+                }
+
+                if (line.match(/%%CODEBLOCK_\d+%%/)) {
+                    html += line;
+                    continue;
+                }
+
+                if (line.trim() === '') {
+                    html += '<br>';
+                } else {
+                    html += '<p>' + line + '</p>';
+                }
+            }
+
+            if (inList) html += '</' + listType + '>';
+
+            codeBlocks.forEach(function(block, idx) {
+                var escapedCode = escapeHtml(block.code);
+                var codeHtml =
+                    '<div class="code-block-wrapper">' +
+                    '<div class="code-block-header">' +
+                    '<span class="code-block-lang">' + escapeHtml(block.lang) + '</span>' +
+                    '<button class="copy-btn" onclick="copyCode(this)" type="button">📋 Копировать</button>' +
+                    '</div>' +
+                    '<code class="code-block-code">' + escapedCode + '</code>' +
+                    '</div>';
+                html = html.replace('%%CODEBLOCK_' + idx + '%%', codeHtml);
+            });
+
+            return html;
+        }
+
+        window.copyCode = function(btn) {
+            var wrapper = btn.closest('.code-block-wrapper');
+            var codeEl = wrapper.querySelector('.code-block-code');
+            var text = codeEl.textContent;
+            navigator.clipboard.writeText(text).then(function() {
+                btn.classList.add('copied');
+                btn.innerHTML = '✅ Скопировано';
+                setTimeout(function() {
+                    btn.classList.remove('copied');
+                    btn.innerHTML = '📋 Копировать';
+                }, 2000);
+            });
+        };
+
+        function addMessage(role, content, type, fileNames) {
+            type = type || role;
+            fileNames = fileNames || [];
+            emptyMessage.style.display = 'none';
+
+            var messageEl = document.createElement('div');
+            messageEl.className = 'message ' + type;
+
+            var bubble = document.createElement('div');
+            bubble.className = 'bubble';
+
+            if (role === 'user') {
+                var filesHtml = '';
+                if (fileNames.length > 0) {
+                    filesHtml = '<div class="attached-files-list">';
+                    fileNames.forEach(function(name) {
+                        filesHtml += '<span class="attached-file-tag">📄 ' + escapeHtml(name) + '</span>';
+                    });
+                    filesHtml += '</div>';
+                }
+                bubble.innerHTML = filesHtml + escapeHtml(content);
+            } else if (role === 'assistant') {
+                bubble.innerHTML = renderMarkdown(content);
+            } else {
+                bubble.textContent = content;
+            }
+
+            messageEl.appendChild(bubble);
+            messagesInner.appendChild(messageEl);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+            return messageEl;
+        }
+
+        function addTypingIndicator() {
+            emptyMessage.style.display = 'none';
+            var messageEl = document.createElement('div');
+            messageEl.className = 'message assistant';
+            messageEl.id = 'typingIndicator';
+            var bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.innerHTML = '<div class="typing-dots"><span></span><span></span><span></span></div>';
+            messageEl.appendChild(bubble);
+            messagesInner.appendChild(messageEl);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+            return messageEl;
+        }
+
+        function setLoading(isLoading) {
+            input.disabled = isLoading;
+            sendButton.disabled = isLoading;
+        }
+
+        function getContextMessages() {
+            return allMessages.slice(-MAX_CONTEXT_MESSAGES);
+        }
+
+                form.addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            var text = input.value.trim();
+
+            const chatTimestamp = new Date().toISOString();
+
+            let sendTime = Date.now();
+
+            if (!text || sendButton.disabled) return;
+
+            var hasFiles = attachedFiles.length > 0;
+            var fileNames = attachedFiles.map(function(f) { return f.name; });
+
+            addMessage('user', text, 'user', fileNames);
+
+            input.value = '';
+            input.style.height = 'auto';
+
+            var filesToSend = attachedFiles.slice();
+            attachedFiles.length = 0;
+            renderFileChips();
+
+            setLoading(true);
+            var typingEl = addTypingIndicator();
+
+            try {
+                var data;
+
+                if (hasFiles) {
+                    // ===== ОТПРАВКА С ФАЙЛАМИ =====
+                    var formData = new FormData();
+                    formData.append('message', text);
+                    formData.append('history', JSON.stringify(getContextMessages()));
+                    formData.append('temperature', '0.7');
+                    formData.append('max_tokens', '32768');
+
+                    filesToSend.forEach(function(file) {
+                        formData.append('files', file);
+                    });
+
+                    var resp = await fetch('/chat-with-files', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    data = await resp.json();
+                    if (!resp.ok) throw new Error(data.detail || 'Сервер вернул ошибку');
+
+                    // Сохраняем в историю текст с упоминанием файлов
+                    allMessages.push({
+                        role: 'user',
+                        content: '[Файлы: ' + fileNames.join(', ') + '] ' + text
+                    });
+
+                } else {
+                    // ===== ОТПРАВКА БЕЗ ФАЙЛОВ =====
+                    allMessages.push({ role: 'user', content: text });
+
+                    var resp = await fetch('/chat', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            messages: getContextMessages(),
+                            temperature: 0.7,
+                            max_tokens: 32768
+                        })
+                    });
+
+                    data = await resp.json();
+                    if (!resp.ok) throw new Error(data.detail || 'Сервер вернул ошибку');
+                }
+
+                typingEl.remove();
+                addMessage('assistant', data.answer);
+                allMessages.push({ role: 'assistant', content: data.answer });
+                
+                sendLog({
+                    timestamp: chatTimestamp,
+                    user_message: text,
+                    assistant_response: data.answer,
+                    model: data.model || 'unknown',
+                    response_time_ms: Date.now() - sendTime,
+                    files: fileNames || [],
+                    tokens: data.usage || null
+                });
+
+                if (data.model) {
+                    modelNameEl.textContent = data.model;
+                }
+
+            } catch (error) {
+                typingEl.remove();
+                addMessage('error', 'Ошибка: ' + error.message, 'error');
+            } finally {
+                setLoading(false);
+                input.focus();
+            }
+        });
+
+        input.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' && !event.shiftKey) {
+                event.preventDefault();
+                form.requestSubmit();
+            }
+        });
+    </script>
+</body>
+</html>
