@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 from pathlib import Path
 from typing import Literal
@@ -18,16 +19,22 @@ from file_reader import (
     read_file_from_bytes,
 )
 
-# Запуск сервера черзе терминал
-# uvicorn app:app --reload --host 127.0.0.1 --port 8000
+from tool_manager import (
+    TOOLS_SCHEMA,
+    SYSTEM_PROMPT_TOOLS,
+    handle_tool_calls,
+    build_tool_result_messages,
+)
 
 load_dotenv()
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
 STATIC_DIR = BASE_DIR / "static"
 
 API_URL = "https://foundation-models.api.cloud.ru/v1/chat/completions"
-API_KEY = os.getenv("CLOUD_API_KEY")
+API_KEY = os.getenv("API_KEY")
 DEFAULT_MODEL = os.getenv(
     "CLOUD_MODEL",
     "anthropic/claude-opus-4.6",
@@ -41,7 +48,7 @@ if not API_KEY:
 
 app = FastAPI(
     title="Local Claude API Server",
-    version="1.0.0",
+    version="1.1.0",
 )
 
 app.mount(
@@ -375,6 +382,7 @@ class ChatResponse(BaseModel):
     answer: str
     model: str | None = None
     usage: dict | None = None
+    files_saved: list[dict] | None = None  # НОВОЕ: инфо о сохранённых файлах
 
 
 # --------------- Вспомогательная функция ---------------
@@ -384,10 +392,18 @@ async def _call_cloud_api(
     model: str | None = None,
     temperature: float = 0.7,
     max_tokens: int = 2048,
+    use_tools: bool = True,
 ) -> dict:
     """
     Отправляет messages в Cloud.ru API и возвращает сырой JSON-ответ.
     Вынесено, чтобы оба эндпоинта использовали одну логику.
+
+    Args:
+        messages: список сообщений
+        model: модель (или DEFAULT_MODEL)
+        temperature: температура генерации
+        max_tokens: максимум токенов
+        use_tools: передавать ли tools в запрос
     """
     payload = {
         "model": model or DEFAULT_MODEL,
@@ -396,6 +412,11 @@ async def _call_cloud_api(
         "max_completion_tokens": max_tokens,
         "stream": False,
     }
+
+    # Добавляем тулзы в запрос
+    if use_tools:
+        payload["tools"] = TOOLS_SCHEMA
+        payload["tool_choice"] = "auto"
 
     headers = {
         "Authorization": f"Bearer {API_KEY}",
@@ -425,15 +446,6 @@ async def _call_cloud_api(
                 detail=f"Cloud.ru вернул неожиданный ответ: {data}",
             )
 
-        message = choices[0].get("message", {})
-        answer = message.get("content", "")
-
-        if not answer:
-            raise HTTPException(
-                status_code=502,
-                detail=f"В ответе отсутствует текст: {data}",
-            )
-
         return data
 
     except httpx.RequestError as error:
@@ -441,6 +453,120 @@ async def _call_cloud_api(
             status_code=502,
             detail=f"Ошибка соединения с Cloud.ru: {error}",
         )
+
+
+async def _process_response(
+    data: dict,
+    messages: list[dict],
+    model: str | None = None,
+    temperature: float = 0.7,
+    max_tokens: int = 2048,
+) -> dict:
+    """
+    Обрабатывает ответ Cloud.ru API.
+    Если модель вернула tool_calls — выполняет их и делает follow-up запрос.
+    Если обычный текст — возвращает как есть.
+
+    Returns:
+        dict: {"answer": str, "model": str, "usage": dict, "files_saved": list}
+    """
+    message = data["choices"][0]["message"]
+    tool_calls = message.get("tool_calls")
+
+    # --- Обычный текстовый ответ (без tool_calls) ---
+    if not tool_calls:
+        answer = message.get("content", "")
+        if not answer:
+            raise HTTPException(
+                status_code=502,
+                detail=f"В ответе отсутствует текст: {data}",
+            )
+        return {
+            "answer": answer,
+            "model": data.get("model"),
+            "usage": data.get("usage"),
+            "files_saved": [],
+        }
+
+    # --- Модель вызвала тулзу ---
+    logger.info(f"Модель вызвала {len(tool_calls)} тулз(ы)")
+
+    # 1. Выполняем тулзы локально (сохраняем файлы)
+    tool_result = handle_tool_calls(message)
+
+    for f in tool_result["files_saved"]:
+        if f["success"]:
+            logger.info(f"✅ Файл сохранён: {f['file_name']} → {f['file_path']}")
+        else:
+            logger.error(f"❌ Ошибка сохранения: {f['error']}")
+
+    # 2. Формируем follow-up: отправляем результаты тулз обратно модели,
+    #    чтобы она сгенерировала финальный текстовый ответ для пользователя
+    followup_messages = messages.copy()
+
+    # Добавляем ответ ассистента с tool_calls (как его вернул API)
+    followup_messages.append(message)
+
+    # Добавляем результаты выполнения тулз
+    tool_result_msgs = build_tool_result_messages(tool_calls, tool_result)
+    followup_messages.extend(tool_result_msgs)
+
+    # 3. Делаем повторный запрос БЕЗ тулз, чтобы получить текстовый ответ
+    followup_data = await _call_cloud_api(
+        messages=followup_messages,
+        model=model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        use_tools=False,  # Без тулз — нужен только текст
+    )
+
+    followup_message = followup_data["choices"][0]["message"]
+    answer = followup_message.get("content", "")
+
+    # Если модель вернула текст вместе с tool_calls (некоторые модели так делают)
+    # и follow-up пустой — используем оригинальный текст
+    if not answer and tool_result.get("text_content"):
+        answer = tool_result["text_content"]
+
+    if not answer:
+        # Крайний случай: собираем ответ из информации о файлах
+        saved_names = [
+            f["file_name"] for f in tool_result["files_saved"] if f["success"]
+        ]
+        if saved_names:
+            answer = f"Файлы сохранены: {', '.join(saved_names)}"
+        else:
+            answer = "Модель вызвала функцию, но не вернула текстовый ответ."
+
+    return {
+        "answer": answer,
+        "model": followup_data.get("model") or data.get("model"),
+        "usage": followup_data.get("usage"),
+        "files_saved": tool_result["files_saved"],
+    }
+
+
+def _inject_system_prompt(messages: list[dict]) -> list[dict]:
+    """
+    Добавляет системный промпт с правилами тулз в начало messages.
+    Если системный промпт уже есть — дополняет его.
+    Не мутирует оригинальный список.
+    """
+    messages = [msg.copy() for msg in messages]
+
+    if messages and messages[0].get("role") == "system":
+        # Дополняем существующий системный промпт
+        messages[0]["content"] = (
+            messages[0]["content"] + "\n\n" + SYSTEM_PROMPT_TOOLS
+        )
+    else:
+        # Вставляем новый системный промпт в начало
+        messages.insert(0, {
+            "role": "system",
+            "content": SYSTEM_PROMPT_TOOLS,
+        })
+
+    return messages
 
 
 # --------------- Эндпоинты ---------------
@@ -496,19 +622,32 @@ async def chat(request: ChatRequest):
         for msg in request.messages
     ]
 
+    # Внедряем системный промпт с правилами тулз
+    messages = _inject_system_prompt(messages)
+
+    # Отправляем в Cloud.ru (с тулзами)
     data = await _call_cloud_api(
+        messages=messages,
+        model=request.model,
+        temperature=request.temperature,
+        max_tokens=request.max_tokens,
+        use_tools=True,
+    )
+
+    # Обрабатываем ответ (текст или tool_calls)
+    result = await _process_response(
+        data=data,
         messages=messages,
         model=request.model,
         temperature=request.temperature,
         max_tokens=request.max_tokens,
     )
 
-    answer = data["choices"][0]["message"]["content"]
-
     return ChatResponse(
-        answer=answer,
-        model=data.get("model"),
-        usage=data.get("usage"),
+        answer=result["answer"],
+        model=result["model"],
+        usage=result["usage"],
+        files_saved=result["files_saved"] or None,
     )
 
 
@@ -552,25 +691,34 @@ async def chat_with_files(
     except json.JSONDecodeError:
         conversation_history = []
 
-    # 4. Собираем messages
+    # 4. Собираем messages + системный промпт с тулзами
     messages = conversation_history + [
         {"role": "user", "content": user_content}
     ]
+    messages = _inject_system_prompt(messages)
 
-    # 5. Отправляем в Cloud.ru
+    # 5. Отправляем в Cloud.ru (с тулзами)
     data = await _call_cloud_api(
+        messages=messages,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        use_tools=True,
+    )
+
+    # 6. Обрабатываем ответ (текст или tool_calls)
+    result = await _process_response(
+        data=data,
         messages=messages,
         temperature=temperature,
         max_tokens=max_tokens,
     )
 
-    answer = data["choices"][0]["message"]["content"]
-
-    # 6. Возвращаем ответ
+    # 7. Возвращаем ответ
     return {
-        "answer": answer,
-        "model": data.get("model"),
-        "usage": data.get("usage"),
+        "answer": result["answer"],
+        "model": result["model"],
+        "usage": result["usage"],
+        "files_saved": result["files_saved"] or [],
         "attached_files": [
             {
                 "filename": f.filename,

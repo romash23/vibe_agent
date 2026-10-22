@@ -1,0 +1,9 @@
+# Игнорим папки
+logs/
+__pycache__/
+generated_files/
+logs/
+
+# Игнорим файлов
+.env
+static/v0_ws_ui.html

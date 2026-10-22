@@ -20,6 +20,7 @@ SUPPORTED_EXTENSIONS: dict[str, str] = {
     ".csv": "text",
     ".tsv": "text",
     ".json": "text",
+    ".jsonl": "text",
     ".xml": "text",
     ".yaml": "text",
     ".yml": "text",

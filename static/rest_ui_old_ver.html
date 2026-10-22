@@ -36,6 +36,18 @@
             --file-chip-text: #ccc;
             --toggle-bg: #555;
             --toggle-active-bg: #d4a574;
+            --download-card-bg: #2e2e2e;
+            --download-card-border: #444;
+            --download-btn-bg: #d4a574;
+            --download-btn-text: #1a1a1a;
+            --download-btn-hover: #e0b88a;
+            --status-bg: #2a2a2a;
+            --status-text: #a0a0a0;
+            --status-border: #3a3a3a;
+            --ws-badge-bg: #2d4a2d;
+            --ws-badge-text: #6fcf6f;
+            --http-badge-bg: #4a3a2d;
+            --http-badge-text: #d4a574;
         }
 
         [data-theme="light"] {
@@ -63,6 +75,18 @@
             --file-chip-text: #555;
             --toggle-bg: #ccc;
             --toggle-active-bg: #b3784f;
+            --download-card-bg: #f5f5f5;
+            --download-card-border: #ddd;
+            --download-btn-bg: #b3784f;
+            --download-btn-text: #ffffff;
+            --download-btn-hover: #9a6440;
+            --status-bg: #f0f0f0;
+            --status-text: #6b6b6b;
+            --status-border: #e0e0e0;
+            --ws-badge-bg: #e0f5e0;
+            --ws-badge-text: #2d7a2d;
+            --http-badge-bg: #f5ece0;
+            --http-badge-text: #9a6440;
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -91,6 +115,17 @@
             font-size: 11px; color: var(--text-muted); background: var(--bg-tertiary);
             padding: 3px 10px; border-radius: 12px;
             transition: background var(--transition-speed), color var(--transition-speed);
+        }
+        .transport-badge {
+            font-size: 10px; font-weight: 700; letter-spacing: 0.5px;
+            padding: 3px 10px; border-radius: 12px;
+            transition: background var(--transition-speed), color var(--transition-speed);
+        }
+        .transport-badge.ws {
+            background: var(--ws-badge-bg); color: var(--ws-badge-text);
+        }
+        .transport-badge.http {
+            background: var(--http-badge-bg); color: var(--http-badge-text);
         }
 
         .theme-toggle { position: relative; width: 48px; height: 26px; cursor: pointer; flex-shrink: 0; }
@@ -175,6 +210,76 @@
             white-space: pre; transition: background var(--transition-speed);
         }
 
+        /* ===== Карточки скачиваемых файлов ===== */
+        .download-files-area {
+            display: flex; flex-direction: column; gap: 8px; margin-top: 12px;
+        }
+        .download-file-card {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px;
+            background: var(--download-card-bg);
+            border: 1px solid var(--download-card-border);
+            border-radius: 12px;
+            transition: background var(--transition-speed), border-color var(--transition-speed);
+        }
+        .download-file-icon {
+            font-size: 28px; flex-shrink: 0; width: 40px; height: 40px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .download-file-info {
+            flex: 1; min-width: 0;
+        }
+        .download-file-name {
+            font-size: 14px; font-weight: 600; color: var(--text-primary);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .download-file-meta {
+            font-size: 11px; color: var(--text-muted); margin-top: 2px;
+        }
+        .download-file-btn {
+            display: flex; align-items: center; gap: 6px;
+            padding: 8px 16px;
+            background: var(--download-btn-bg);
+            color: var(--download-btn-text);
+            border: none; border-radius: 8px;
+            font-size: 13px; font-weight: 600;
+            cursor: pointer; flex-shrink: 0;
+            transition: background 0.2s;
+        }
+        .download-file-btn:hover {
+            background: var(--download-btn-hover);
+        }
+        .download-file-btn svg {
+            width: 16px; height: 16px;
+        }
+
+        /* ===== Статусное сообщение (WebSocket) ===== */
+        .status-message {
+            display: flex; align-items: center; gap: 8px;
+            padding: 8px 14px; margin-bottom: 8px;
+            background: var(--status-bg);
+            border: 1px solid var(--status-border);
+            border-radius: 12px; font-size: 13px;
+            color: var(--status-text);
+            transition: background var(--transition-speed), border-color var(--transition-speed);
+        }
+        .status-message .status-spinner {
+            width: 14px; height: 14px; border: 2px solid var(--status-border);
+            border-top-color: var(--accent); border-radius: 50%;
+            animation: spin 0.8s linear infinite; flex-shrink: 0;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ===== Стриминг-курсор ===== */
+        .streaming-cursor::after {
+            content: '▊'; animation: blink-cursor 0.8s step-end infinite;
+            color: var(--accent); margin-left: 1px;
+        }
+        @keyframes blink-cursor {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
         .input-area {
             padding: 12px 32px 20px; border-top: 1px solid var(--border-color);
             background: var(--bg-primary); flex-shrink: 0;
@@ -249,32 +354,9 @@
             .input-area { padding: 10px 16px 16px; }
             .bubble { max-width: 88%; }
             .header-left h1 { font-size: 16px; }
+            .download-file-card { flex-wrap: wrap; }
+            .download-file-btn { width: 100%; justify-content: center; }
         }
-
-        .log-status {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 11px;
-            color: var(--text-secondary);
-            padding: 0 8px;
-        }
-        .log-dot {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: #e74c3c;
-            transition: background 0.3s;
-        }
-        .log-dot.ok {
-            background: #2ecc71;
-        }
-        .log-info {
-            font-size: 10px;
-            color: var(--text-secondary);
-            opacity: 0.7;
-        }
-
     </style>
 </head>
 
@@ -284,6 +366,7 @@
             <div class="header-left">
                 <h1>Claude</h1>
                 <span class="model-badge" id="modelName">claude-sonnet-4-20250514</span>
+                <span class="transport-badge" id="transportBadge">…</span>
             </div>
             <div class="toggle-wrapper">
                 <span class="toggle-icon">🌙</span>
@@ -293,12 +376,6 @@
                 </label>
                 <span class="toggle-icon">☀️</span>
             </div>
-
-        <div class="log-status" title="Статус сервера логирования">
-            <div class="log-dot" id="logDot"></div>
-            <span id="logLabel">Логи: офлайн</span>
-        </div>
-            
         </header>
 
         <section id="messages">
@@ -330,7 +407,7 @@
         </div>
     </div>
 
-        <script>
+    <script>
 
         // ===== МОДУЛЬ ЛОГИРОВАНИЯ =====
         const LOG_SERVER = 'http://localhost:3001';
@@ -343,10 +420,6 @@
             } catch(e) {
                 logOnline = false;
             }
-            const dot = document.getElementById('logDot');
-            const label = document.getElementById('logLabel');
-            if (dot) dot.className = logOnline ? 'log-dot ok' : 'log-dot';
-            if (label) label.textContent = logOnline ? 'Логи: онлайн' : 'Логи: офлайн';
         }
 
         async function sendLog(payload) {
@@ -363,6 +436,39 @@
         checkLogServer();
         setInterval(checkLogServer, 30000);
         // ===== КОНЕЦ МОДУЛЯ ЛОГИРОВАНИЯ =====
+
+
+        // ===== ОПРЕДЕЛЕНИЕ ТРАНСПОРТА =====
+        let TRANSPORT = 'http'; // по умолчанию http, обновится из /api/config
+
+        async function detectTransport() {
+            try {
+                var resp = await fetch('/api/config', { signal: AbortSignal.timeout(3000) });
+                if (resp.ok) {
+                    var cfg = await resp.json();
+                    TRANSPORT = cfg.transport_mode || 'http';
+                }
+            } catch(e) {
+                // Если /api/config нет — пробуем определить по наличию ws
+                TRANSPORT = 'http';
+            }
+            updateTransportBadge();
+        }
+
+        function updateTransportBadge() {
+            var badge = document.getElementById('transportBadge');
+            if (TRANSPORT === 'websocket') {
+                badge.textContent = '⚡ WS';
+                badge.className = 'transport-badge ws';
+            } else {
+                badge.textContent = '🌐 HTTP';
+                badge.className = 'transport-badge http';
+            }
+        }
+
+        detectTransport();
+        // ===== КОНЕЦ ОПРЕДЕЛЕНИЯ ТРАНСПОРТА =====
+
 
         const app = document.querySelector('.app');
         const form = document.getElementById('chatForm');
@@ -437,12 +543,121 @@
             return div.innerHTML;
         }
 
+        // ===== УТИЛИТЫ ДЛЯ ФАЙЛОВ =====
+        function getFileIcon(filename) {
+            var ext = filename.split('.').pop().toLowerCase();
+            var icons = {
+                pdf: '📕', doc: '📘', docx: '📘', xls: '📊', xlsx: '📊',
+                ppt: '📙', pptx: '📙', zip: '🗜️', rar: '🗜️', '7z': '🗜️',
+                png: '🖼️', jpg: '🖼️', jpeg: '🖼️', gif: '🖼️', svg: '🖼️', webp: '🖼️',
+                mp3: '🎵', wav: '🎵', mp4: '🎬', avi: '🎬', mov: '🎬',
+                py: '🐍', js: '📜', ts: '📜', html: '🌐', css: '🎨',
+                json: '📋', xml: '📋', csv: '📊', txt: '📝', md: '📝',
+                exe: '⚙️', sh: '⚙️', bat: '⚙️'
+            };
+            return icons[ext] || '📄';
+        }
+
+        function formatFileSize(bytes) {
+            if (!bytes && bytes !== 0) return '';
+            if (bytes < 1024) return bytes + ' Б';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' КБ';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' МБ';
+        }
+
+        function downloadFileFromUrl(url, filename) {
+            var a = document.createElement('a');
+            a.href = url;
+            a.download = filename || 'file';
+            a.style.display = 'none';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        function downloadFileFromContent(content, filename, mimeType, isBase64) {
+            var blob;
+            if (isBase64) {
+                var byteChars = atob(content);
+                var byteNumbers = new Array(byteChars.length);
+                for (var i = 0; i < byteChars.length; i++) {
+                    byteNumbers[i] = byteChars.charCodeAt(i);
+                }
+                var byteArray = new Uint8Array(byteNumbers);
+                blob = new Blob([byteArray], { type: mimeType || 'application/octet-stream' });
+            } else {
+                blob = new Blob([content], { type: mimeType || 'text/plain;charset=utf-8' });
+            }
+            var url = URL.createObjectURL(blob);
+            downloadFileFromUrl(url, filename);
+            setTimeout(function() { URL.revokeObjectURL(url); }, 10000);
+        }
+
+        function renderDownloadCards(files) {
+            if (!files || files.length === 0) return '';
+
+            var html = '<div class="download-files-area">';
+            files.forEach(function(file, idx) {
+                var icon = getFileIcon(file.name);
+                var sizeText = file.size ? formatFileSize(file.size) : '';
+                var fileId = 'dl_' + Date.now() + '_' + idx;
+
+                html += '<div class="download-file-card" id="' + fileId + '">' +
+                    '<div class="download-file-icon">' + icon + '</div>' +
+                    '<div class="download-file-info">' +
+                        '<div class="download-file-name">' + escapeHtml(file.name) + '</div>' +
+                        (sizeText ? '<div class="download-file-meta">' + sizeText + '</div>' : '') +
+                    '</div>' +
+                    '<button class="download-file-btn" type="button" ' +
+                        'data-filename="' + escapeHtml(file.name) + '" ' +
+                        (file.download_url ? 'data-url="' + escapeHtml(file.download_url) + '" ' : '') +
+                        (file.content ? 'data-has-content="true" data-file-idx="' + idx + '" ' : '') +
+                        (file.mime_type ? 'data-mime="' + escapeHtml(file.mime_type) + '" ' : '') +
+                        (file.is_base64 ? 'data-base64="true" ' : '') +
+                    '>' +
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+                            '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>' +
+                            '<polyline points="7 10 12 15 17 10"/>' +
+                            '<line x1="12" y1="15" x2="12" y2="3"/>' +
+                        '</svg>' +
+                        'Скачать' +
+                    '</button>' +
+                '</div>';
+            });
+            html += '</div>';
+            return html;
+        }
+
+        var pendingDownloadFiles = {};
+
+        function bindDownloadButtons(container, files) {
+            if (!files || files.length === 0) return;
+            container.querySelectorAll('.download-file-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var filename = btn.dataset.filename;
+                    var url = btn.dataset.url;
+                    var hasContent = btn.dataset.hasContent;
+                    var mime = btn.dataset.mime;
+                    var isBase64 = btn.dataset.base64 === 'true';
+                    var fileIdx = btn.dataset.fileIdx;
+
+                    if (url) {
+                        downloadFileFromUrl(url, filename);
+                    } else if (hasContent && fileIdx !== undefined) {
+                        var fileData = files[parseInt(fileIdx)];
+                        if (fileData && fileData.content) {
+                            downloadFileFromContent(fileData.content, filename, mime, isBase64);
+                        }
+                    }
+                });
+            });
+        }
+
         function renderMarkdown(text) {
             var codeBlocks = [];
             var BACKTICK3 = String.fromCharCode(96, 96, 96);
             var BACKTICK1 = String.fromCharCode(96);
 
-            // Извлекаем блоки кода
             var codeBlockRegex = new RegExp(BACKTICK3 + '(\\w*)\\n?([\\s\\S]*?)' + BACKTICK3, 'g');
             var processed = text.replace(codeBlockRegex, function(match, lang, code) {
                 var idx = codeBlocks.length;
@@ -450,13 +665,10 @@
                 return '%%CODEBLOCK_' + idx + '%%';
             });
 
-            // Inline code
             var inlineCodeRegex = new RegExp(BACKTICK1 + '([^' + BACKTICK1 + ']+)' + BACKTICK1, 'g');
             processed = processed.replace(inlineCodeRegex, '<code>$1</code>');
 
-            // Bold
             processed = processed.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-            // Italic
             processed = processed.replace(/\*(.+?)\*/g, '<em>$1</em>');
 
             var lines = processed.split('\n');
@@ -539,9 +751,10 @@
             });
         };
 
-        function addMessage(role, content, type, fileNames) {
+        function addMessage(role, content, type, fileNames, downloadFiles) {
             type = type || role;
             fileNames = fileNames || [];
+            downloadFiles = downloadFiles || [];
             emptyMessage.style.display = 'none';
 
             var messageEl = document.createElement('div');
@@ -562,15 +775,94 @@
                 bubble.innerHTML = filesHtml + escapeHtml(content);
             } else if (role === 'assistant') {
                 bubble.innerHTML = renderMarkdown(content);
+                if (downloadFiles.length > 0) {
+                    bubble.innerHTML += renderDownloadCards(downloadFiles);
+                }
             } else {
                 bubble.textContent = content;
             }
 
             messageEl.appendChild(bubble);
             messagesInner.appendChild(messageEl);
+
+            if (downloadFiles.length > 0) {
+                bindDownloadButtons(bubble, downloadFiles);
+            }
+
             messagesEl.scrollTop = messagesEl.scrollHeight;
             return messageEl;
         }
+
+        // ===== СТРИМИНГ-БАБЛ ДЛЯ WEBSOCKET =====
+        function addStreamingBubble() {
+            emptyMessage.style.display = 'none';
+
+            var messageEl = document.createElement('div');
+            messageEl.className = 'message assistant';
+            messageEl.id = 'streamingMessage';
+
+            var bubble = document.createElement('div');
+            bubble.className = 'bubble streaming-cursor';
+            bubble.id = 'streamingBubble';
+            bubble.innerHTML = '';
+
+            messageEl.appendChild(bubble);
+            messagesInner.appendChild(messageEl);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+
+            return { messageEl: messageEl, bubble: bubble, rawText: '' };
+        }
+
+        function updateStreamingBubble(streamState, newChunk) {
+            streamState.rawText += newChunk;
+            streamState.bubble.innerHTML = renderMarkdown(streamState.rawText);
+            // Восстанавливаем курсор (renderMarkdown заменяет innerHTML)
+            streamState.bubble.classList.add('streaming-cursor');
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+
+        function finalizeStreamingBubble(streamState, downloadFiles) {
+            streamState.bubble.classList.remove('streaming-cursor');
+            streamState.bubble.id = '';
+            streamState.messageEl.id = '';
+
+            // Перерендерим финальный markdown
+            streamState.bubble.innerHTML = renderMarkdown(streamState.rawText);
+
+            if (downloadFiles && downloadFiles.length > 0) {
+                streamState.bubble.innerHTML += renderDownloadCards(downloadFiles);
+                bindDownloadButtons(streamState.bubble, downloadFiles);
+            }
+
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
+        // ===== КОНЕЦ СТРИМИНГ-БАБЛА =====
+
+
+        // ===== СТАТУСНЫЕ СООБЩЕНИЯ =====
+        var currentStatusEl = null;
+
+        function showStatus(text) {
+            removeStatus();
+            var el = document.createElement('div');
+            el.className = 'status-message';
+            el.id = 'wsStatus';
+            el.innerHTML = '<div class="status-spinner"></div><span>' + escapeHtml(text) + '</span>';
+            messagesInner.appendChild(el);
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+            currentStatusEl = el;
+        }
+
+        function removeStatus() {
+            if (currentStatusEl) {
+                currentStatusEl.remove();
+                currentStatusEl = null;
+            }
+            var old = document.getElementById('wsStatus');
+            if (old) old.remove();
+        }
+        // ===== КОНЕЦ СТАТУСНЫХ СООБЩЕНИЙ =====
+
 
         function addTypingIndicator() {
             emptyMessage.style.display = 'none';
@@ -595,28 +887,182 @@
             return allMessages.slice(-MAX_CONTEXT_MESSAGES);
         }
 
-                form.addEventListener('submit', async function(event) {
-            event.preventDefault();
 
-            var text = input.value.trim();
+        // ===================================================================
+        //  ОТПРАВКА ЧЕРЕЗ WEBSOCKET
+        // ===================================================================
+        function sendViaWebSocket(text, fileNames, filesToSend) {
+            var sendTime = Date.now();
+            var chatTimestamp = new Date().toISOString();
 
-            const chatTimestamp = new Date().toISOString();
+            setLoading(true);
+            showStatus('Подключение к серверу…');
 
-            let sendTime = Date.now();
+            // Определяем ws:// или wss:// на основе текущего протокола
+            var wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            var wsUrl = wsProtocol + '//' + location.host + '/ws/chat';
+            var ws = new WebSocket(wsUrl);
 
-            if (!text || sendButton.disabled) return;
+            var streamState = null;
+            var finalAnswer = '';
+            var finalModel = '';
+            var finalUsage = null;
+            var finalFiles = [];
 
-            var hasFiles = attachedFiles.length > 0;
-            var fileNames = attachedFiles.map(function(f) { return f.name; });
+            ws.onopen = function() {
+                showStatus('Отправляю запрос модели…');
 
-            addMessage('user', text, 'user', fileNames);
+                // Если есть файлы — читаем их и отправляем с base64
+                if (filesToSend && filesToSend.length > 0) {
+                    var filesData = [];
+                    var filesRead = 0;
 
-            input.value = '';
-            input.style.height = 'auto';
+                    filesToSend.forEach(function(file) {
+                        var reader = new FileReader();
+                        reader.onload = function(e) {
+                            var base64 = e.target.result.split(',')[1]; // убираем data:...;base64,
+                            filesData.push({
+                                name: file.name,
+                                content: base64,
+                                mime_type: file.type || 'application/octet-stream'
+                            });
+                            filesRead++;
+                            if (filesRead === filesToSend.length) {
+                                // Все файлы прочитаны — отправляем
+                                ws.send(JSON.stringify({
+                                    message: text,
+                                    history: getContextMessages(),
+                                    temperature: 0.7,
+                                    max_tokens: 32768,
+                                    files: filesData
+                                }));
+                            }
+                        };
+                        reader.readAsDataURL(file);
+                    });
+                } else {
+                    ws.send(JSON.stringify({
+                        message: text,
+                        history: getContextMessages(),
+                        temperature: 0.7,
+                        max_tokens: 32768
+                    }));
+                }
+            };
 
-            var filesToSend = attachedFiles.slice();
-            attachedFiles.length = 0;
-            renderFileChips();
+            ws.onmessage = function(event) {
+                var msg;
+                try {
+                    msg = JSON.parse(event.data);
+                } catch(e) {
+                    return;
+                }
+
+                switch (msg.type) {
+                    case 'status':
+                        showStatus(msg.content || msg.message || 'Обработка…');
+                        break;
+
+                    case 'chunk':
+                        // Первый чанк — создаём бабл для стриминга
+                        if (!streamState) {
+                            removeStatus();
+                            streamState = addStreamingBubble();
+                        }
+                        updateStreamingBubble(streamState, msg.content || '');
+                        break;
+
+                    case 'done':
+                        removeStatus();
+
+                        finalAnswer = msg.answer || msg.content || (streamState ? streamState.rawText : '');
+                        finalModel = msg.model || '';
+                        finalUsage = msg.usage || null;
+                        finalFiles = msg.files || [];
+
+                        if (streamState) {
+                            // Если был стриминг — финализируем бабл
+                            // Обновляем rawText если сервер прислал полный ответ
+                            if (msg.answer && msg.answer !== streamState.rawText) {
+                                streamState.rawText = msg.answer;
+                            }
+                            finalizeStreamingBubble(streamState, finalFiles);
+                        } else {
+                            // Стриминга не было — просто добавляем сообщение
+                            addMessage('assistant', finalAnswer, 'assistant', [], finalFiles);
+                        }
+
+                        allMessages.push({ role: 'assistant', content: finalAnswer });
+
+                        if (finalModel) {
+                            modelNameEl.textContent = finalModel;
+                        }
+
+                        sendLog({
+                            timestamp: chatTimestamp,
+                            user_message: text,
+                            assistant_response: finalAnswer,
+                            model: finalModel || 'unknown',
+                            response_time_ms: Date.now() - sendTime,
+                            files: fileNames || [],
+                            tokens: finalUsage
+                        });
+
+                        ws.close();
+                        setLoading(false);
+                        input.focus();
+                        break;
+
+                    case 'error':
+                        removeStatus();
+                        if (streamState) {
+                            streamState.bubble.classList.remove('streaming-cursor');
+                        }
+                        addMessage('error', 'Ошибка: ' + (msg.content || msg.message || 'Неизвестная ошибка'), 'error');
+                        ws.close();
+                        setLoading(false);
+                        input.focus();
+                        break;
+
+                    default:
+                        // Неизвестный тип — игнорируем или показываем как статус
+                        if (msg.content) {
+                            showStatus(msg.content);
+                        }
+                        break;
+                }
+            };
+
+            ws.onerror = function(err) {
+                removeStatus();
+                if (streamState) {
+                    streamState.bubble.classList.remove('streaming-cursor');
+                }
+                addMessage('error', 'WebSocket ошибка соединения. Проверьте сервер.', 'error');
+                setLoading(false);
+                input.focus();
+            };
+
+            ws.onclose = function(event) {
+                removeStatus();
+                // Если закрылся до получения done — показываем что есть
+                if (streamState && streamState.bubble.classList.contains('streaming-cursor')) {
+                    finalizeStreamingBubble(streamState, []);
+                    if (streamState.rawText) {
+                        allMessages.push({ role: 'assistant', content: streamState.rawText });
+                    }
+                }
+                setLoading(false);
+            };
+        }
+
+
+        // ===================================================================
+        //  ОТПРАВКА ЧЕРЕЗ HTTP (оригинальная логика)
+        // ===================================================================
+        async function sendViaHTTP(text, fileNames, filesToSend, hasFiles) {
+            var sendTime = Date.now();
+            var chatTimestamp = new Date().toISOString();
 
             setLoading(true);
             var typingEl = addTypingIndicator();
@@ -625,7 +1071,6 @@
                 var data;
 
                 if (hasFiles) {
-                    // ===== ОТПРАВКА С ФАЙЛАМИ =====
                     var formData = new FormData();
                     formData.append('message', text);
                     formData.append('history', JSON.stringify(getContextMessages()));
@@ -644,14 +1089,12 @@
                     data = await resp.json();
                     if (!resp.ok) throw new Error(data.detail || 'Сервер вернул ошибку');
 
-                    // Сохраняем в историю текст с упоминанием файлов
                     allMessages.push({
                         role: 'user',
                         content: '[Файлы: ' + fileNames.join(', ') + '] ' + text
                     });
 
                 } else {
-                    // ===== ОТПРАВКА БЕЗ ФАЙЛОВ =====
                     allMessages.push({ role: 'user', content: text });
 
                     var resp = await fetch('/chat', {
@@ -669,9 +1112,11 @@
                 }
 
                 typingEl.remove();
-                addMessage('assistant', data.answer);
+
+                var downloadFiles = data.files || [];
+                addMessage('assistant', data.answer, 'assistant', [], downloadFiles);
                 allMessages.push({ role: 'assistant', content: data.answer });
-                
+
                 sendLog({
                     timestamp: chatTimestamp,
                     user_message: text,
@@ -692,6 +1137,49 @@
             } finally {
                 setLoading(false);
                 input.focus();
+            }
+        }
+
+
+        // ===================================================================
+        //  ОБРАБОТКА ФОРМЫ — РОУТИНГ ПО ТРАНСПОРТУ
+        // ===================================================================
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            var text = input.value.trim();
+            if (!text || sendButton.disabled) return;
+
+            var hasFiles = attachedFiles.length > 0;
+            var fileNames = attachedFiles.map(function(f) { return f.name; });
+
+            // Показываем сообщение пользователя
+            addMessage('user', text, 'user', fileNames);
+
+            // Очищаем инпут
+            input.value = '';
+            input.style.height = 'auto';
+
+            // Копируем файлы и очищаем
+            var filesToSend = attachedFiles.slice();
+            attachedFiles.length = 0;
+            renderFileChips();
+
+            // Добавляем в историю (для HTTP без файлов это делается внутри sendViaHTTP,
+            // но для WS нужно до отправки)
+            if (TRANSPORT === 'websocket') {
+                if (hasFiles) {
+                    allMessages.push({
+                        role: 'user',
+                        content: '[Файлы: ' + fileNames.join(', ') + '] ' + text
+                    });
+                } else {
+                    allMessages.push({ role: 'user', content: text });
+                }
+                sendViaWebSocket(text, fileNames, filesToSend);
+            } else {
+                // HTTP — история добавляется внутри sendViaHTTP
+                sendViaHTTP(text, fileNames, filesToSend, hasFiles);
             }
         });
 
